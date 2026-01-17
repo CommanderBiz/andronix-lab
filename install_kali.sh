@@ -39,21 +39,37 @@ fix_broken_packages() {
     dpkg --configure -a
 }
 
-patch_browsers() {
-    echo "Patching Browser Shortcuts..."
-    
-    # 1. Patch Firefox
-    # We use sed to find the 'Exec=' line and inject the flag
-    if [ -f /usr/share/applications/firefox-esr.desktop ]; then
-        sed -i 's|Exec=/usr/lib/firefox-esr/firefox-esr %u|Exec=env MOZ_FAKE_NO_SANDBOX=1 /usr/lib/firefox-esr/firefox-esr %u|g' /usr/share/applications/firefox-esr.desktop
-        echo "Firefox patched."
+# Patching Browsers
+wrap_browsers() {
+    echo "Wrapping Browsers with Safety Flags..."
+
+    # 1. Firefox Wrapper
+    if [ -f /usr/bin/firefox-esr ]; then
+        # Rename the real binary
+        mv /usr/bin/firefox-esr /usr/bin/firefox-esr.real
+        
+        # Create a fake binary that calls the real one with our flag
+        cat <<BASH > /usr/bin/firefox-esr
+
+#!/bin/bash
+export MOZ_FAKE_NO_SANDBOX=1
+exec /usr/bin/firefox-esr.real "\$@"
+BASH
+        
+        # Make it executable
+        chmod +x /usr/bin/firefox-esr
+        echo "Firefox wrapped."
     fi
 
-    # 2. Patch Chromium
-    # We replace the Exec line with our safe mode flags
-    if [ -f /usr/share/applications/chromium.desktop ]; then
-        sed -i 's|Exec=/usr/bin/chromium %U|Exec=/usr/bin/chromium --no-sandbox --test-type --disable-dev-shm-usage --user-data-dir=/root/.config/chromium %U|g' /usr/share/applications/chromium.desktop
-        echo "Chromium patched."
+    # 2. Chromium Wrapper
+    if [ -f /usr/bin/chromium ]; then
+        mv /usr/bin/chromium /usr/bin/chromium.real
+        cat <<BASH > /usr/bin/chromium
+#!/bin/bash
+exec /usr/bin/chromium.real --no-sandbox --test-type --disable-dev-shm-usage --user-data-dir=/root/.config/chromium "\$@"
+BASH
+        chmod +x /usr/bin/chromium
+        echo "Chromium wrapped."
     fi
 }
 
@@ -74,7 +90,7 @@ DEBIAN_FRONTEND=noninteractive apt install -y xfce4 tigervnc-standalone-server f
 fix_broken_packages
 
 # ADDED: Run the patcher
-patch_browsers
+wrap_browsers
 
 cleanup_image
 rm /setup.sh
