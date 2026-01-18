@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "Building Base System (Version 3.8 - Commander Dragon Brave Edition)..."
+echo "Building Base System (Version 3.9 - Commander Dragon Brave Edition)..."
 
 # --- TARGET ARCHITECTURE (for Android/Termux) ---
 ARCH="arm64"
@@ -77,16 +77,13 @@ wrap_browsers() {
 }
 
 setup_vnc() {
-    echo "Configuring VNC..."
-    # Create the new, XDG-compliant config location for TigerVNC
+    echo "Configuring VNC with robust startup script..."
     mkdir -p /root/.config/tigervnc
-
-    # Create the password file in the new location
     echo "kali" | vncpasswd -f > /root/.config/tigervnc/passwd
     chmod 600 /root/.config/tigervnc/passwd
 
-    # Create the xstartup file in the new location
-    echo -e "#!/bin/sh\\nunset SESSION_MANAGER\\nunset DBUS_SESSION_BUS_ADDRESS\\nstartxfce4 &" > /root/.config/tigervnc/xstartup
+    # Create a new xstartup that uses dbus-launch to keep the session alive
+    echo -e "#!/bin/sh\\n# Unset variables that can interfere with session startup\\nunset SESSION_MANAGER\\nunset DBUS_SESSION_BUS_ADDRESS\\n\\n# Launch the XFCE desktop environment with a dbus session\\n/usr/bin/dbus-launch --exit-with-session /usr/bin/startxfce4" > /root/.config/tigervnc/xstartup
     chmod +x /root/.config/tigervnc/xstartup
 }
 
