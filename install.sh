@@ -2,7 +2,7 @@
 
 # --- CONFIGURATION ---
 # PASTE YOUR RELEASE LINK HERE vvv
-URL="https://github.com/CommanderBiz/andronix-lab/releases/download/v2.0/kali-fs.tar.xz"
+URL="https://github.com/CommanderBiz/andronix-lab/releases/download/v3.3/kali-fs.tar.xz"
 # ---------------------
 
 INSTALL_DIR="kali-fs"

@@ -1,5 +1,5 @@
 #!/bin/bash
-echo "Building Base System (Version 3.0 - The Dragon Edition)..."
+echo "Building Base System (Version 3.3 - Commander Dragon Edition)..."
 
 # 1. Clean Slate
 sudo rm -rf kali-rootfs kali-fs.tar.xz
@@ -82,10 +82,10 @@ cleanup_image() {
 
 nuke_systemd
 
-echo "Installing Desktop, Themes & Browsers..."
-# ADDED: kali-themes and kali-defaults-desktop for the 'Dragon' look
+echo "Installing Desktop, Themes & Browsers & Goodies..."
+# ADDED: kali-themes and kali-defaults-desktop for the 'Dragon' look/ plus xfce4-goodies
 # ADDED: nmap so the user has at least one tool to start with
-apt install -y xfce4 tigervnc-standalone-server firefox-esr chromium kali-themes kali-defaults-desktop nmap || true
+apt install -y xfce4 xfce4-goodies tigervnc-standalone-server firefox-esr chromium kali-themes kali-defaults-desktop nmap || true
 
 fix_broken_packages
 wrap_browsers
