@@ -2,7 +2,7 @@
 
 # --- CONFIGURATION ---
 # PASTE YOUR RELEASE LINK HERE vvv
-URL="https://github.com/CommanderBiz/andronix-lab/releases/download/v4.2/kali-fs.tar.xz"
+URL="https://github.com/CommanderBiz/andronix-lab/releases/download/v4.3/kali-fs.tar.xz"
 # ---------------------
 
 INSTALL_DIR="kali-fs"
@@ -71,4 +71,5 @@ echo "========================================"
 echo "INSTALLATION COMPLETE"
 echo "To start: ./start-kali.sh"
 echo "To use GUI: Run 'vncserver' inside Kali"
+echo "Default VNC Password: kali"
 echo "========================================"

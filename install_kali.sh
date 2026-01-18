@@ -2,7 +2,7 @@
 # This script automates the process of building a custom Kali Linux root filesystem
 # specifically tailored for use within Termux on Android devices.
 #
-# Version: 4.2 - The Commander Edition (Robust Install Order)
+# Version: 4.3 - The Commander Edition (Dynamic Browser Config)
 #
 # The final output is a compressed tarball (kali-fs.tar.xz) that can be
 # downloaded and extracted by an end-user installer script.
@@ -10,33 +10,23 @@
 # Exit immediately if a command exits with a non-zero status.
 set -e
 
-echo "Building Base System (Version 4.2 - The Commander Edition)..."
+echo "Building Base System (Version 4.3 - The Commander Edition)..."
 
 # --- PART 1: Build Environment Setup ---
 
-# --- Target Architecture ---
-# We hardcode the architecture to 'arm64' (also known as aarch64) because
-# the target platform is modern Android devices running Termux.
 ARCH="arm64"
 echo "Target Architecture: $ARCH"
 
-# --- Clean Slate ---
-# To ensure a fresh build every time, we remove any artifacts from previous runs.
 echo "Performing a clean slate by removing old 'kali-rootfs' and '*.tar.xz'..."
 sudo rm -rf kali-rootfs kali-fs.tar.xz
 mkdir kali-rootfs
 
-# --- Bootstrap ---
-# 'debootstrap' is a tool to create a basic Debian-based system from scratch.
 echo "Bootstrapping the Kali Rolling release for $ARCH..."
 sudo debootstrap --arch=$ARCH --no-check-gpg --include=nano,wget,dbus-x11 kali-rolling ./kali-rootfs https://kali.download/kali/
 
 
 # --- PART 2: The Internal Setup Script ---
 
-# --- Generate Internal Script ---
-# This 'heredoc' creates a shell script INSIDE the new filesystem.
-# This script will be executed within the 'proot' jail to perform the setup.
 echo "Generating the internal setup script (setup.sh)..."
 cat <<'EOF' > ./kali-rootfs/setup.sh
 #!/bin/bash
@@ -52,7 +42,6 @@ echo "deb http://http.kali.org/kali kali-rolling main contrib non-free non-free-
 apt-get update
 
 # --- Function: Neutralize Systemd ---
-# Overwrites problematic systemd-related scripts that fail in a proot environment.
 nuke_systemd() {
     echo "Neutralizing Systemd post-installation scripts..."
     local offenders=("systemd" "udev" "systemd-resolved" "systemd-timesyncd")
@@ -65,7 +54,6 @@ nuke_systemd() {
 }
 
 # --- Function: Fix Broken Packages ---
-# Applies workarounds for other known fragile package installation scripts.
 fix_broken_packages() {
     echo "Applying workarounds for known broken packages..."
     local broken=("fuse3" "ntfs-3g" "poppler-data" "kali-desktop-base" "desktop-base")
@@ -89,11 +77,11 @@ setup_brave_repo() {
     apt-get update
 }
 
-# --- Function: Configure Desktop and Browser ---
+# --- Function: Configure Desktop and Browser (DYNAMIC VERSION) ---
 configure_desktop_and_browser() {
     echo "Configuring Brave Browser, setting defaults, and creating README..."
 
-    # Patch Brave Browser's .desktop files to run without a sandbox.
+    # Patch all Brave Browser .desktop files to run without a sandbox.
     find /usr/share/applications -name "brave-browser*.desktop" -print0 | while IFS= read -r -d $'\0' desktop_file; do
         if [ -f "$desktop_file" ]; then
             echo "Patching $desktop_file..."
@@ -103,9 +91,17 @@ configure_desktop_and_browser() {
         fi
     done
 
-    # Set Brave as the default web browser for XFCE.
-    mkdir -p /root/.config/xfce4
-    echo "[Desktop Entry]\nWebBrowser=brave-browser.desktop" > /root/.config/xfce4/helpers.rc
+    # Dynamically find the correct .desktop file name to set as the default.
+    BRAVE_DESKTOP_FILE=$(find /usr/share/applications -name "brave-browser*.desktop" ! -name "*private*" ! -name "*incognito*" -print -quit)
+
+    if [ -n "$BRAVE_DESKTOP_FILE" ]; then
+        BRAVE_DESKTOP_BASENAME=$(basename "$BRAVE_DESKTOP_FILE")
+        mkdir -p /root/.config/xfce4
+        echo "Setting default browser to $BRAVE_DESKTOP_BASENAME..."
+        echo -e "[Desktop Entry]\nWebBrowser=$BRAVE_DESKTOP_BASENAME" > /root/.config/xfce4/helpers.rc
+    else
+        echo "WARNING: Could not find a suitable brave-browser.desktop file. Default browser may not be set."
+    fi
 
     # Create a helpful README file on the root's desktop.
     mkdir -p /root/Desktop
@@ -145,8 +141,7 @@ nuke_systemd
 
 # --- Install Desktop and VNC ---
 echo "Installing Desktop, VNC & Core Tools..."
-# We use a two-step installation process to handle expected dpkg errors gracefully.
-apt-get install -y --allow-unauthenticated xfce4 xfce4-goodies tigervnc-standalone-server kali-themes kali-defaults-desktop nmap || true
+apt-get install -y --allow-unauthenticated xfce4 xfce4-goodies exo-utils tigervnc-standalone-server kali-themes kali-defaults-desktop nmap || true
 
 echo "Applying package fixes for desktop environment..."
 fix_broken_packages
@@ -155,20 +150,17 @@ echo "Completing desktop installation..."
 apt-get install -f -y --allow-unauthenticated
 
 # --- Configure VNC ---
-# Now that the VNC server is guaranteed to be installed, we can configure it.
 setup_vnc
 
 # --- Install and Configure Brave Browser ---
 echo "Installing Brave Browser..."
 setup_brave_repo
-# We add a retry loop here to guard against transient network errors during the download.
 for i in {1..3}; do
     apt-get install -y --allow-unauthenticated brave-browser && break
     echo "Brave installation failed. Retrying (attempt $i of 3)..."
     sleep 5
 done
 
-# Check if brave-browser is installed before trying to configure it
 if dpkg -s brave-browser &> /dev/null; then
     configure_desktop_and_browser
 else
@@ -187,10 +179,8 @@ EOF
 
 # --- PART 3: Execution and Packaging ---
 
-# Make the internal script executable.
 sudo chmod +x ./kali-rootfs/setup.sh
 
-# --- Enter Jail & Build ---
 echo "Entering proot jail to compile and configure the system..."
 QEMU_STATIC_PATH="qemu-$(echo $ARCH | sed 's/arm64/aarch64/')"
 if [ -f "/usr/bin/$QEMU_STATIC_PATH-static" ]; then
@@ -198,10 +188,9 @@ if [ -f "/usr/bin/$QEMU_STATIC_PATH-static" ]; then
 fi
 sudo proot -q "$QEMU_STATIC_PATH-static" -0 -r ./kali-rootfs -b /dev -b /proc -b /sys -w /root /usr/bin/env -i /bin/bash /setup.sh
 
-# --- Package ---
 echo "Packaging the final root filesystem into 'kali-fs.tar.xz'..."
 sudo tar -cJpf kali-fs.tar.xz -C ./kali-rootfs .
 
 echo "Build Complete: kali-fs.tar.xz"
-echo "You can now use this tarball with the Termux Kali installer script."
+
 # --- End of Script ---
