@@ -2,7 +2,7 @@
 
 # --- CONFIGURATION ---
 # PASTE YOUR RELEASE LINK HERE vvv
-URL="https://github.com/CommanderBiz/andronix-lab/releases/download/vX.Y/ubuntu-fs.tar.xz" # Placeholder URL
+URL="https://github.com/CommanderBiz/andronix-lab/releases/download/V0.1/ubuntu-fs.tar.xz" # Placeholder URL
 # ---------------------
 
 INSTALL_DIR="ubuntu-fs"
