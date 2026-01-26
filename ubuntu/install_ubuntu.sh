@@ -32,7 +32,7 @@ echo "Bootstrapping Ubuntu Noble for $ARCH..."
 # the Ubuntu GPG keys properly installed and configured for multi-arch support,
 # and then remove the --no-check-gpg flag.
 #
-sudo debootstrap --arch=$ARCH --no-check-gpg --include=nano,wget,dbus-x11,ubuntu-keyring noble ./ubuntu-rootfs http://ports.ubuntu.com/ubuntu-ports/
+sudo debootstrap --arch=$ARCH --components=main,restricted,universe,multiverse --no-check-gpg --include=nano,wget,dbus-x11,ubuntu-keyring noble ./ubuntu-rootfs http://ports.ubuntu.com/ubuntu-ports/
 
 
 # --- PART 2: The Internal Setup Script ---
@@ -119,20 +119,6 @@ fix_broken_packages
 # --- Final Cleanup ---
 cleanup_image
 
-# Create a helpful README file on the root's desktop.
-mkdir -p /root/Desktop
-cat <<README > /root/Desktop/README.txt
-Welcome to Ubuntu Noble on Termux!
-
-This is a minimal rootfs.
-To install a desktop environment (like XFCE) and web browser (like Brave),
-please run 'apt update && apt install xfce4 xfce4-goodies tigervnc-standalone-server brave-browser'
-(or your preferred software) manually after starting your Ubuntu environment in Termux.
-
-Your default VNC password will be set when you install tigervnc-standalone-server and run vncpasswd.
-README
-
-
 # Self-destruct the setup script.
 rm /setup.sh
 
@@ -143,6 +129,10 @@ EOF
 # --- PART 3: Execution and Packaging ---
 
 sudo chmod +x ./ubuntu-rootfs/setup.sh
+
+echo "Copying post-install script..."
+sudo cp ./ubuntu/complete_install.sh ./ubuntu-rootfs/root/complete_install.sh
+sudo chmod +x ./ubuntu-rootfs/root/complete_install.sh
 
 echo "Entering proot jail to compile and configure the system..."
 QEMU_STATIC_PATH="qemu-$(echo $ARCH | sed 's/arm64/aarch64/')"

@@ -68,8 +68,9 @@ EOF
 chmod +x start-ubuntu.sh # Changed start-kali.sh to start-ubuntu.sh
 
 echo "========================================"
-echo "INSTALLATION COMPLETE"
-echo "To start: ./start-ubuntu.sh"
-echo "To use GUI: Run 'vncserver' inside Ubuntu"
-echo "Default VNC Password: ubuntu" # Changed default VNC password hint
+echo "MINIMAL INSTALLATION COMPLETE"
+echo "To start the environment, run: ./start-ubuntu.sh"
+echo ""
+echo "Inside the Ubuntu environment, run the following command to install the desktop:"
+echo "/root/complete_install.sh"
 echo "========================================
