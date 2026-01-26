@@ -32,7 +32,7 @@ echo "Bootstrapping Ubuntu Noble for $ARCH..."
 # the Ubuntu GPG keys properly installed and configured for multi-arch support,
 # and then remove the --no-check-gpg flag.
 #
-sudo debootstrap --arch=$ARCH --no-check-gpg --include=nano,wget,dbus-x11 noble ./ubuntu-rootfs http://ports.ubuntu.com/ubuntu-ports/
+sudo debootstrap --arch=$ARCH --no-check-gpg --include=nano,wget,dbus-x11,ubuntu-keyring noble ./ubuntu-rootfs http://ports.ubuntu.com/ubuntu-ports/
 
 
 # --- PART 2: The Internal Setup Script ---
