@@ -1,4 +1,5 @@
-kali-rootfs/
+kali/kali-rootfs/
+ubuntu/ubuntu-rootfs/
 *.tar.xz
 *.tar.gz
 GEMINI.md

@@ -13,7 +13,7 @@ echo "=== CommanderBiz Kali Installer ==="
 # 1. Dependency Check
 echo "[*] Checking dependencies..."
 pkg update -y > /dev/null 2>&1
-for pkg in proot tar wget; do
+for pkg in proot tar wget debian-archive-keyring; do
     if ! command -v $pkg > /dev/null; then
         echo "Installing $pkg..."
         pkg install -y $pkg > /dev/null 2>&1
