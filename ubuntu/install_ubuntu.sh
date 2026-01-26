@@ -49,9 +49,9 @@ export DEBIAN_FRONTEND=noninteractive
 # --- Hydrate Repositories ---
 echo "Hydrating Repositories..."
 cat > /etc/apt/sources.list <<SOURCES
-deb http://ports.ubuntu.com/ubuntu-ports/ noble main restricted universe multiverse
-deb http://ports.ubuntu.com/ubuntu-ports/ noble-updates main restricted universe multiverse
-deb http://ports.ubuntu.com/ubuntu-ports/ noble-security main restricted universe multiverse
+deb https://ports.ubuntu.com/ubuntu-ports/ noble main restricted universe multiverse
+deb https://ports.ubuntu.com/ubuntu-ports/ noble-updates main restricted universe multiverse
+deb https://ports.ubuntu.com/ubuntu-ports/ noble-security main restricted universe multiverse
 SOURCES
 
 # --- APT Workarounds for QEMU ---
@@ -101,67 +101,6 @@ fix_broken_packages() {
     dpkg --configure -a
 }
 
-# --- Function: Add Brave Browser Repository ---
-setup_brave_repo() {
-    echo "Setting up Brave Browser repository..."
-    apt-get install -y curl gpg
-    curl -fsSLo /usr/share/keyrings/brave-browser-archive-keyring.gpg https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg
-    echo "deb [signed-by=/usr/share/keyrings/brave-browser-archive-keyring.gpg] https://brave-browser-apt-release.s3.brave.com/ stable main" > /etc/apt/sources.list.d/brave-browser-release.list
-    apt-get update || true
-}
-
-# --- Function: Configure Desktop and Browser ---
-configure_desktop_and_browser() {
-    echo "Configuring Brave Browser, setting defaults, and creating README..."
-
-    # Patch all Brave Browser .desktop files to run without a sandbox.
-    # The --no-sandbox flag is necessary in proot environments like Termux
-    # due to kernel/filesystem limitations that prevent sandboxing.
-    find /usr/share/applications -name "brave-browser*.desktop" -print0 | while IFS= read -r -d $'/0' desktop_file; do
-        if [ -f "$desktop_file" ]; then
-            echo "Patching $desktop_file..."
-            if ! grep -q -- "--no-sandbox" "$desktop_file"; then
-                sed -i 's|\(Exec=[^ ]*\)|\1 --no-sandbox --test-type --disable-dev-shm-usage|' "$desktop_file"
-            fi
-        fi
-    done
-
-    # Find the correct .desktop file to set as the default.
-    BRAVE_DESKTOP_FILE=$(find /usr/share/applications -name "brave-browser*.desktop" ! -name "*private*" ! -name "*incognito*" -print -quit)
-
-    if [ -n "$BRAVE_DESKTOP_FILE" ]; then
-        BRAVE_DESKTOP_BASENAME=$(basename "$BRAVE_DESKTOP_FILE")
-        mkdir -p /root/.config/xfce4
-        echo "Setting default browser to $BRAVE_DESKTOP_BASENAME..."
-        echo -e "[Desktop Entry]\nWebBrowser=$BRAVE_DESKTOP_BASENAME" > /root/.config/xfce4/helpers.rc
-    else
-        echo "WARNING: Could not find a suitable brave-browser.desktop file. Default browser may not be set."
-    fi
-
-    # Create a helpful README file on the root's desktop.
-    mkdir -p /root/Desktop
-    cat <<README > /root/Desktop/README.txt
-Welcome to Ubuntu Noble on Termux!
-
-Your default VNC password is: ubuntu
-
-To change this password, open a terminal and run the command:
-vncpasswd
-
-Enjoy your system!
-README
-}
-
-# --- Function: Setup TigerVNC ---
-setup_vnc() {
-    echo "Configuring VNC with robust startup script..."
-    mkdir -p /root/.config/tigervnc
-    echo "ubuntu" | vncpasswd -f > /root/.config/tigervnc/passwd
-    chmod 600 /root/.config/tigervnc/passwd
-    echo -e "#!/bin/sh\nunset SESSION_MANAGER\nunset DBUS_SESSION_BUS_ADDRESS\n/usr/bin/dbus-launch --exit-with-session /usr/bin/startxfce4" > /root/.config/tigervnc/xstartup
-    chmod +x /root/.config/tigervnc/xstartup
-}
-
 # --- Function: Cleanup ---
 cleanup_image() {
     echo "Cleaning up the image to reduce size..."
@@ -174,39 +113,25 @@ cleanup_image() {
 
 nuke_systemd
 
-# --- Install Desktop and VNC ---
-echo "Installing Desktop, VNC & Core Tools..."
-# Some packages may fail to install properly in a proot environment
-# due to limited root access or kernel features. `|| true` is used here to
-# prevent these expected failures from halting the entire installation process.
-apt-get install -y xfce4 xfce4-goodies exo-utils tigervnc-standalone-server nmap || true
-
-echo "Applying package fixes for desktop environment..."
+echo "Applying package fixes..."
 fix_broken_packages
-
-echo "Completing desktop installation..."
-apt-get install -f -y
-
-# --- Configure VNC ---
-setup_vnc
-
-# --- Install and Configure Brave Browser ---
-echo "Installing Brave Browser..."
-setup_brave_repo
-for i in {1..3}; do
-    apt-get install -y brave-browser && break
-    echo "Brave installation failed. Retrying (attempt $i of 3)..."
-    sleep 5
-done
-
-if dpkg -s brave-browser &> /dev/null; then
-    configure_desktop_and_browser
-else
-    echo "WARNING: Brave Browser installation failed after 3 attempts. Skipping browser configuration."
-fi
 
 # --- Final Cleanup ---
 cleanup_image
+
+# Create a helpful README file on the root's desktop.
+mkdir -p /root/Desktop
+cat <<README > /root/Desktop/README.txt
+Welcome to Ubuntu Noble on Termux!
+
+This is a minimal rootfs.
+To install a desktop environment (like XFCE) and web browser (like Brave),
+please run 'apt update && apt install xfce4 xfce4-goodies tigervnc-standalone-server brave-browser'
+(or your preferred software) manually after starting your Ubuntu environment in Termux.
+
+Your default VNC password will be set when you install tigervnc-standalone-server and run vncpasswd.
+README
+
 
 # Self-destruct the setup script.
 rm /setup.sh
